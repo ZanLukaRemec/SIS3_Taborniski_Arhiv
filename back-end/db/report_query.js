@@ -161,9 +161,102 @@ async function getTemplates(categoryId) {
   }));
 }
 
+async function getTemplateById(templateId) {
+  const [templates] = await pool.execute(
+    `SELECT
+       po.id,
+       po.struktura_obrazca,
+       po.kategorija_id,
+       kp.naziv AS kategorija_naziv
+     FROM predloga_obrazca po
+     JOIN kategorija_porocila kp ON kp.id = po.kategorija_id
+     WHERE po.id = ?
+       AND po.veljavno_od <= CURRENT_DATE
+       AND (po.veljavno_do IS NULL OR po.veljavno_do >= CURRENT_DATE)`,
+    [templateId],
+  );
+
+  if (templates.length === 0) {
+    return null;
+  }
+
+  return {
+    ...templates[0],
+    struktura_obrazca: parseJson(templates[0].struktura_obrazca),
+  };
+}
+
+async function createDraft({
+  naslov,
+  vsebinaObrazca,
+  arhivirnoLeto,
+  predlogaId,
+  kategorijaId,
+  avtorId,
+}) {
+  const [result] = await pool.execute(
+    `INSERT INTO porocilo
+       (naslov, vsebina_obrazca, status, arhivirno_leto, predloga_id,
+        kategorija_porocila_id, vod_id, avtor_id, pot_do_datoteke)
+     VALUES (?, ?, 'osnutek', ?, ?, ?, NULL, ?, NULL)`,
+    [
+      naslov,
+      JSON.stringify(vsebinaObrazca),
+      arhivirnoLeto,
+      predlogaId,
+      kategorijaId,
+      avtorId,
+    ],
+  );
+
+  return result.insertId;
+}
+
+async function getReportState(reportId) {
+  const [reports] = await pool.execute(
+    `SELECT id, status, avtor_id
+     FROM porocilo
+     WHERE id = ?`,
+    [reportId],
+  );
+
+  return reports[0] || null;
+}
+
+async function updateDraft({
+  reportId,
+  naslov,
+  vsebinaObrazca,
+  arhivirnoLeto,
+  predlogaId,
+  kategorijaId,
+}) {
+  await pool.execute(
+    `UPDATE porocilo
+     SET naslov = ?,
+         vsebina_obrazca = ?,
+         arhivirno_leto = ?,
+         predloga_id = ?,
+         kategorija_porocila_id = ?
+     WHERE id = ?`,
+    [
+      naslov,
+      JSON.stringify(vsebinaObrazca),
+      arhivirnoLeto,
+      predlogaId,
+      kategorijaId,
+      reportId,
+    ],
+  );
+}
+
 module.exports = {
+  createDraft,
   getCategories,
   getReportById,
+  getReportState,
   getReports,
+  getTemplateById,
   getTemplates,
+  updateDraft,
 };

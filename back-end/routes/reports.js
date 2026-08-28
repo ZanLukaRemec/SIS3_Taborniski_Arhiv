@@ -14,6 +14,174 @@ function parsePositiveInteger(value) {
   return Number.isInteger(number) && number > 0 ? number : null;
 }
 
+function validateReportBody(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { error: "Telo zahteve mora biti JSON objekt" };
+  }
+
+  const naslov = typeof body.naslov === "string" ? body.naslov.trim() : "";
+  const arhivirnoLeto = parsePositiveInteger(body.arhivirno_leto);
+  const predlogaId = parsePositiveInteger(body.predloga_id);
+  const kategorijaId = parsePositiveInteger(body.kategorija_id);
+  const vsebinaObrazca = body.vsebina_obrazca;
+
+  if (!naslov || naslov.length > 200) {
+    return { error: "Naslov mora vsebovati od 1 do 200 znakov" };
+  }
+
+  if (arhivirnoLeto === null || arhivirnoLeto === undefined) {
+    return { error: "Arhivsko leto mora biti veljavno število" };
+  }
+
+  if (predlogaId === null || predlogaId === undefined) {
+    return { error: "Predloga mora biti veljavno število" };
+  }
+
+  if (kategorijaId === null || kategorijaId === undefined) {
+    return { error: "Kategorija mora biti veljavno število" };
+  }
+
+  if (
+    !vsebinaObrazca ||
+    typeof vsebinaObrazca !== "object" ||
+    Array.isArray(vsebinaObrazca)
+  ) {
+    return { error: "Vsebina obrazca mora biti JSON objekt" };
+  }
+
+  return {
+    report: {
+      naslov,
+      vsebinaObrazca,
+      arhivirnoLeto,
+      predlogaId,
+      kategorijaId,
+    },
+  };
+}
+
+function getMissingRequiredFields(templateFields, content) {
+  if (!Array.isArray(templateFields)) {
+    return null;
+  }
+
+  return templateFields
+    .filter((field) => {
+      if (!field.required) {
+        return false;
+      }
+
+      const value = content[field.name];
+      return value === undefined || value === null || value === "";
+    })
+    .map((field) => field.label || field.name);
+}
+
+async function validateTemplate(report) {
+  const template = await reportQuery.getTemplateById(report.predlogaId);
+
+  if (!template) {
+    return { error: "Izbrana predloga ne obstaja ali ni več veljavna" };
+  }
+
+  if (template.kategorija_id !== report.kategorijaId) {
+    return { error: "Predloga ne pripada izbrani kategoriji" };
+  }
+
+  const missingFields = getMissingRequiredFields(
+    template.struktura_obrazca,
+    report.vsebinaObrazca,
+  );
+
+  if (missingFields === null) {
+    return { error: "Predloga nima veljavne strukture obrazca" };
+  }
+
+  if (missingFields.length > 0) {
+    return { error: `Manjkajo obvezna polja: ${missingFields.join(", ")}` };
+  }
+
+  return {};
+}
+
+router.post("/reports", requireAuth, async (req, res) => {
+  const validation = validateReportBody(req.body);
+
+  if (validation.error) {
+    return res.status(400).json({ message: validation.error });
+  }
+
+  try {
+    const templateValidation = await validateTemplate(validation.report);
+
+    if (templateValidation.error) {
+      return res.status(400).json({ message: templateValidation.error });
+    }
+
+    const reportId = await reportQuery.createDraft({
+      ...validation.report,
+      avtorId: req.session.user.id,
+    });
+    const report = await reportQuery.getReportById({
+      reportId,
+      userId: req.session.user.id,
+      isAdmin: false,
+    });
+
+    res.status(201).json({ message: "Osnutek je ustvarjen", report });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Osnutka ni bilo mogoče ustvariti" });
+  }
+});
+
+router.put("/reports/:id", requireAuth, async (req, res) => {
+  const reportId = parsePositiveInteger(req.params.id);
+  const validation = validateReportBody(req.body);
+
+  if (reportId === null) {
+    return res.status(400).json({ message: "Neveljaven ID poročila" });
+  }
+
+  if (validation.error) {
+    return res.status(400).json({ message: validation.error });
+  }
+
+  try {
+    const currentReport = await reportQuery.getReportState(reportId);
+
+    if (!currentReport) {
+      return res.status(404).json({ message: "Poročilo ne obstaja" });
+    }
+
+    if (currentReport.avtor_id !== req.session.user.id) {
+      return res.status(403).json({ message: "Urejate lahko samo svoje osnutke" });
+    }
+
+    if (currentReport.status !== "osnutek") {
+      return res.status(409).json({ message: "Arhiviranega poročila ni mogoče urejati" });
+    }
+
+    const templateValidation = await validateTemplate(validation.report);
+
+    if (templateValidation.error) {
+      return res.status(400).json({ message: templateValidation.error });
+    }
+
+    await reportQuery.updateDraft({ reportId, ...validation.report });
+    const report = await reportQuery.getReportById({
+      reportId,
+      userId: req.session.user.id,
+      isAdmin: false,
+    });
+
+    res.json({ message: "Osnutek je shranjen", report });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Osnutka ni bilo mogoče shraniti" });
+  }
+});
+
 router.get("/reports", requireAuth, async (req, res) => {
   const year = parsePositiveInteger(req.query.year);
   const category = parsePositiveInteger(req.query.category);
