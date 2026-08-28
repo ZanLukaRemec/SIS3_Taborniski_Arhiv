@@ -5,6 +5,7 @@ const express = require("express");
 const session = require("express-session");
 const pool = require("./db/connection");
 const authRoutes = require("./routes/auth");
+const reportRoutes = require("./routes/reports");
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -45,6 +46,7 @@ app.get("/health", async (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/", reportRoutes);
 
 app.listen(port, () => {
   console.log(`Backend posluša na vratih ${port}`);
