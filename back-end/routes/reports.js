@@ -182,6 +182,47 @@ router.put("/reports/:id", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/reports/:id/submit", requireAuth, async (req, res) => {
+  const reportId = parsePositiveInteger(req.params.id);
+
+  if (reportId === null) {
+    return res.status(400).json({ message: "Neveljaven ID poročila" });
+  }
+
+  try {
+    const currentReport = await reportQuery.getReportState(reportId);
+
+    if (!currentReport) {
+      return res.status(404).json({ message: "Poročilo ne obstaja" });
+    }
+
+    if (currentReport.avtor_id !== req.session.user.id) {
+      return res.status(403).json({ message: "Oddate lahko samo svoje poročilo" });
+    }
+
+    if (currentReport.status !== "osnutek") {
+      return res.status(409).json({ message: "Poročilo je že arhivirano" });
+    }
+
+    const submitted = await reportQuery.submitDraft(reportId);
+
+    if (!submitted) {
+      return res.status(409).json({ message: "Poročila ni bilo mogoče oddati" });
+    }
+
+    const report = await reportQuery.getReportById({
+      reportId,
+      userId: req.session.user.id,
+      isAdmin: false,
+    });
+
+    res.json({ message: "Poročilo je oddano in arhivirano", report });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Poročila ni bilo mogoče oddati" });
+  }
+});
+
 router.get("/reports", requireAuth, async (req, res) => {
   const year = parsePositiveInteger(req.query.year);
   const category = parsePositiveInteger(req.query.category);

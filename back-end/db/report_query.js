@@ -250,6 +250,19 @@ async function updateDraft({
   );
 }
 
+async function submitDraft(reportId) {
+  const [result] = await pool.execute(
+    `UPDATE porocilo
+     SET status = 'arhivirano',
+         oddano_dne = CURRENT_TIMESTAMP
+     WHERE id = ?
+       AND status = 'osnutek'`,
+    [reportId],
+  );
+
+  return result.affectedRows === 1;
+}
+
 module.exports = {
   createDraft,
   getCategories,
@@ -258,5 +271,6 @@ module.exports = {
   getReports,
   getTemplateById,
   getTemplates,
+  submitDraft,
   updateDraft,
 };
