@@ -263,14 +263,86 @@ async function submitDraft(reportId) {
   return result.affectedRows === 1;
 }
 
+async function reopenReport({ reportId, adminId }) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [result] = await connection.execute(
+      `UPDATE porocilo
+       SET status = 'osnutek',
+           oddano_dne = NULL
+       WHERE id = ?
+         AND status = 'arhivirano'`,
+      [reportId],
+    );
+
+    if (result.affectedRows !== 1) {
+      await connection.rollback();
+      return false;
+    }
+
+    await connection.execute(
+      `INSERT INTO dnevnik_sprememb
+       (akcija, tabela, zapis_id, avtor_id)
+       VALUES ('ponovno_odprtje', 'porocilo', ?, ?)`,
+      [reportId, adminId],
+    );
+
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function deleteReport({ reportId, adminId }) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [result] = await connection.execute(
+      "DELETE FROM porocilo WHERE id = ?",
+      [reportId],
+    );
+
+    if (result.affectedRows !== 1) {
+      await connection.rollback();
+      return false;
+    }
+
+    await connection.execute(
+      `INSERT INTO dnevnik_sprememb
+       (akcija, tabela, zapis_id, avtor_id)
+       VALUES ('brisanje', 'porocilo', ?, ?)`,
+      [reportId, adminId],
+    );
+
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 module.exports = {
   createDraft,
+  deleteReport,
   getCategories,
   getReportById,
   getReportState,
   getReports,
   getTemplateById,
   getTemplates,
+  reopenReport,
   submitDraft,
   updateDraft,
 };
