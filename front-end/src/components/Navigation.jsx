@@ -5,17 +5,21 @@ import AuthContext from '../context/auth'
 function Navigation() {
   const { user, logout } = useContext(AuthContext)
   const [error, setError] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
   const navigate = useNavigate()
   const isAdmin = user.vloge?.includes('administrator')
 
   async function handleLogout() {
     setError('')
+    setLoggingOut(true)
 
     try {
       await logout()
       navigate('/login')
     } catch (logoutError) {
       setError(logoutError.message)
+    } finally {
+      setLoggingOut(false)
     }
   }
 
@@ -40,8 +44,13 @@ function Navigation() {
           <span className="user-name">
             {user.ime} {user.priimek}
           </span>
-          <button className="logout-button" type="button" onClick={handleLogout}>
-            Odjava
+          <button
+            className="logout-button"
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? 'Odjavljam …' : 'Odjava'}
           </button>
         </div>
         {error && <p className="inline-error">{error}</p>}

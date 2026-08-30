@@ -5,29 +5,19 @@ import {
 } from 'react-router-dom'
 import AdminRoute from './components/AdminRoute'
 import AppLayout from './components/AppLayout'
+import GuestRoute from './components/GuestRoute'
 import ProtectedRoute from './components/ProtectedRoute'
+import LoginPage from './pages/LoginPage'
 import PagePlaceholder from './pages/PagePlaceholder'
+import RegisterPage from './pages/RegisterPage'
 
 const router = createBrowserRouter([
   {
-    path: '/login',
-    element: (
-      <PagePlaceholder
-        compact
-        title="Prijava"
-        description="Obrazec za prijavo bo dodan v naslednji fazi."
-      />
-    ),
-  },
-  {
-    path: '/register',
-    element: (
-      <PagePlaceholder
-        compact
-        title="Registracija"
-        description="Obrazec za ustvarjanje računa bo dodan v naslednji fazi."
-      />
-    ),
+    element: <GuestRoute />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+    ],
   },
   {
     element: <ProtectedRoute />,
