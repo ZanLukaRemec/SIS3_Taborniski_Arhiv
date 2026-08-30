@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import apiRequest from '../api'
 import ReportContent from '../components/ReportContent'
 
 function ReportPage() {
   const { id } = useParams()
+  const location = useLocation()
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const backTo = location.state?.from || '/archive'
+  const backLabel =
+    backTo === '/my-reports' ? 'Nazaj na moja poročila' : 'Nazaj v arhiv'
 
   useEffect(() => {
     let active = true
@@ -49,15 +53,15 @@ function ReportPage() {
         <p className="message message-error" role="alert">
           {error}
         </p>
-        <Link to="/archive">Nazaj v arhiv</Link>
+        <Link to={backTo}>{backLabel}</Link>
       </section>
     )
   }
 
   return (
     <section className="page-panel">
-      <Link className="back-link" to="/archive">
-        Nazaj v arhiv
+      <Link className="back-link" to={backTo}>
+        {backLabel}
       </Link>
       <ReportContent report={report} />
     </section>
