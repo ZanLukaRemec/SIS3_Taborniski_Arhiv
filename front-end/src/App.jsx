@@ -7,9 +7,11 @@ import AdminRoute from './components/AdminRoute'
 import AppLayout from './components/AppLayout'
 import GuestRoute from './components/GuestRoute'
 import ProtectedRoute from './components/ProtectedRoute'
+import ArchivePage from './pages/ArchivePage'
 import LoginPage from './pages/LoginPage'
 import PagePlaceholder from './pages/PagePlaceholder'
 import RegisterPage from './pages/RegisterPage'
+import ReportPage from './pages/ReportPage'
 
 const router = createBrowserRouter([
   {
@@ -26,15 +28,7 @@ const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <Navigate to="/archive" replace /> },
-          {
-            path: '/archive',
-            element: (
-              <PagePlaceholder
-                title="Arhiv"
-                description="Hierarhični pregled oddanih poročil bo dodan v fazi arhiva."
-              />
-            ),
-          },
+          { path: '/archive', element: <ArchivePage /> },
           {
             path: '/my-reports',
             element: (
@@ -53,15 +47,7 @@ const router = createBrowserRouter([
               />
             ),
           },
-          {
-            path: '/reports/:id',
-            element: (
-              <PagePlaceholder
-                title="Poročilo"
-                description="Podrobnosti izbranega poročila bodo prikazane na tej strani."
-              />
-            ),
-          },
+          { path: '/reports/:id', element: <ReportPage /> },
           {
             path: '/reports/:id/edit',
             element: (
