@@ -72,7 +72,11 @@ function getMissingRequiredFields(templateFields, content) {
       }
 
       const value = content[field.name];
-      return value === undefined || value === null || value === "";
+      return (
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.trim() === "")
+      );
     })
     .map((field) => field.label || field.name);
 }
@@ -88,17 +92,8 @@ async function validateTemplate(report) {
     return { error: "Predloga ne pripada izbrani kategoriji" };
   }
 
-  const missingFields = getMissingRequiredFields(
-    template.struktura_obrazca,
-    report.vsebinaObrazca,
-  );
-
-  if (missingFields === null) {
+  if (!Array.isArray(template.struktura_obrazca)) {
     return { error: "Predloga nima veljavne strukture obrazca" };
-  }
-
-  if (missingFields.length > 0) {
-    return { error: `Manjkajo obvezna polja: ${missingFields.join(", ")}` };
   }
 
   return {};
@@ -202,6 +197,26 @@ router.post("/reports/:id/submit", requireAuth, async (req, res) => {
 
     if (currentReport.status !== "osnutek") {
       return res.status(409).json({ message: "Poročilo je že arhivirano" });
+    }
+
+    const reportDraft = await reportQuery.getReportById({
+      reportId,
+      userId: req.session.user.id,
+      isAdmin: false,
+    });
+    const missingFields = getMissingRequiredFields(
+      reportDraft.struktura_obrazca,
+      reportDraft.vsebina_obrazca,
+    );
+
+    if (missingFields === null) {
+      return res.status(400).json({ message: "Predloga nima veljavne strukture obrazca" });
+    }
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Manjkajo obvezna polja: ${missingFields.join(", ")}`,
+      });
     }
 
     const submitted = await reportQuery.submitDraft(reportId);

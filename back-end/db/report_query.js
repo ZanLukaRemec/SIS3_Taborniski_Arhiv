@@ -96,6 +96,7 @@ async function getReportById({ reportId, userId, isAdmin }) {
       kp.opis AS kategorija_opis,
       c.ime AS avtor_ime,
       c.priimek AS avtor_priimek,
+      po.naziv AS predloga_naziv,
       po.struktura_obrazca
     FROM porocilo p
     JOIN clan c ON c.id = p.avtor_id
@@ -136,6 +137,7 @@ async function getTemplates(categoryId) {
   let sql = `
     SELECT
       po.id,
+      po.naziv,
       po.struktura_obrazca,
       po.veljavno_od,
       po.veljavno_do,
@@ -165,6 +167,7 @@ async function getTemplateById(templateId) {
   const [templates] = await pool.execute(
     `SELECT
        po.id,
+       po.naziv,
        po.struktura_obrazca,
        po.kategorija_id,
        kp.naziv AS kategorija_naziv
