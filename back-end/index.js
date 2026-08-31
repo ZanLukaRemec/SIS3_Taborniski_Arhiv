@@ -4,7 +4,9 @@ const cors = require("cors");
 const express = require("express");
 const session = require("express-session");
 const pool = require("./db/connection");
+const adminRoutes = require("./routes/admin");
 const authRoutes = require("./routes/auth");
+const catalogRoutes = require("./routes/catalog");
 const reportRoutes = require("./routes/reports");
 
 const app = express();
@@ -46,6 +48,8 @@ app.get("/health", async (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/admin", adminRoutes);
+app.use("/", catalogRoutes);
 app.use("/", reportRoutes);
 
 app.listen(port, () => {

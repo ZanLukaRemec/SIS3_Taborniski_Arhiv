@@ -1,85 +1,14 @@
 const express = require("express");
 const reportQuery = require("../db/report_query");
-const { requireAdmin, requireAuth } = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
+const {
+  getMissingRequiredFields,
+  parsePositiveInteger,
+  validateReportBody,
+} = require("../utils/report_validation");
 
 const router = express.Router();
 const allowedStatuses = ["osnutek", "arhivirano"];
-
-function parsePositiveInteger(value) {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
-}
-
-function validateReportBody(body) {
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return { error: "Telo zahteve mora biti JSON objekt" };
-  }
-
-  const naslov = typeof body.naslov === "string" ? body.naslov.trim() : "";
-  const arhivirnoLeto = parsePositiveInteger(body.arhivirno_leto);
-  const predlogaId = parsePositiveInteger(body.predloga_id);
-  const kategorijaId = parsePositiveInteger(body.kategorija_id);
-  const vsebinaObrazca = body.vsebina_obrazca;
-
-  if (!naslov || naslov.length > 200) {
-    return { error: "Naslov mora vsebovati od 1 do 200 znakov" };
-  }
-
-  if (arhivirnoLeto === null || arhivirnoLeto === undefined) {
-    return { error: "Arhivsko leto mora biti veljavno število" };
-  }
-
-  if (predlogaId === null || predlogaId === undefined) {
-    return { error: "Predloga mora biti veljavno število" };
-  }
-
-  if (kategorijaId === null || kategorijaId === undefined) {
-    return { error: "Kategorija mora biti veljavno število" };
-  }
-
-  if (
-    !vsebinaObrazca ||
-    typeof vsebinaObrazca !== "object" ||
-    Array.isArray(vsebinaObrazca)
-  ) {
-    return { error: "Vsebina obrazca mora biti JSON objekt" };
-  }
-
-  return {
-    report: {
-      naslov,
-      vsebinaObrazca,
-      arhivirnoLeto,
-      predlogaId,
-      kategorijaId,
-    },
-  };
-}
-
-function getMissingRequiredFields(templateFields, content) {
-  if (!Array.isArray(templateFields)) {
-    return null;
-  }
-
-  return templateFields
-    .filter((field) => {
-      if (!field.required) {
-        return false;
-      }
-
-      const value = content[field.name];
-      return (
-        value === undefined ||
-        value === null ||
-        (typeof value === "string" && value.trim() === "")
-      );
-    })
-    .map((field) => field.label || field.name);
-}
 
 async function validateTemplate(report) {
   const template = await reportQuery.getTemplateById(report.predlogaId);
@@ -238,76 +167,6 @@ router.post("/reports/:id/submit", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/admin/reports/:id/reopen", requireAdmin, async (req, res) => {
-  const reportId = parsePositiveInteger(req.params.id);
-
-  if (reportId === null) {
-    return res.status(400).json({ message: "Neveljaven ID poročila" });
-  }
-
-  try {
-    const currentReport = await reportQuery.getReportState(reportId);
-
-    if (!currentReport) {
-      return res.status(404).json({ message: "Poročilo ne obstaja" });
-    }
-
-    if (currentReport.status !== "arhivirano") {
-      return res.status(409).json({ message: "Ponovno je mogoče odpreti samo arhivirano poročilo" });
-    }
-
-    const reopened = await reportQuery.reopenReport({
-      reportId,
-      adminId: req.session.user.id,
-    });
-
-    if (!reopened) {
-      return res.status(409).json({ message: "Poročila ni bilo mogoče ponovno odpreti" });
-    }
-
-    const report = await reportQuery.getReportById({
-      reportId,
-      userId: req.session.user.id,
-      isAdmin: true,
-    });
-
-    res.json({ message: "Poročilo je ponovno odprto", report });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Poročila ni bilo mogoče ponovno odpreti" });
-  }
-});
-
-router.delete("/admin/reports/:id", requireAdmin, async (req, res) => {
-  const reportId = parsePositiveInteger(req.params.id);
-
-  if (reportId === null) {
-    return res.status(400).json({ message: "Neveljaven ID poročila" });
-  }
-
-  try {
-    const currentReport = await reportQuery.getReportState(reportId);
-
-    if (!currentReport) {
-      return res.status(404).json({ message: "Poročilo ne obstaja" });
-    }
-
-    const deleted = await reportQuery.deleteReport({
-      reportId,
-      adminId: req.session.user.id,
-    });
-
-    if (!deleted) {
-      return res.status(404).json({ message: "Poročilo ne obstaja" });
-    }
-
-    res.json({ message: "Poročilo je izbrisano" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Poročila ni bilo mogoče izbrisati" });
-  }
-});
-
 router.get("/reports", requireAuth, async (req, res) => {
   const year = parsePositiveInteger(req.query.year);
   const category = parsePositiveInteger(req.query.category);
@@ -361,32 +220,6 @@ router.get("/reports/:id", requireAuth, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Poročila ni bilo mogoče pridobiti" });
-  }
-});
-
-router.get("/categories", requireAuth, async (req, res) => {
-  try {
-    const categories = await reportQuery.getCategories();
-    res.json({ categories });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Kategorij ni bilo mogoče pridobiti" });
-  }
-});
-
-router.get("/templates", requireAuth, async (req, res) => {
-  const category = parsePositiveInteger(req.query.category);
-
-  if (category === null) {
-    return res.status(400).json({ message: "Kategorija mora biti veljavno število" });
-  }
-
-  try {
-    const templates = await reportQuery.getTemplates(category);
-    res.json({ templates });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Predlog ni bilo mogoče pridobiti" });
   }
 });
 

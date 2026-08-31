@@ -19,7 +19,6 @@ function AuthProvider({ children }) {
       body: JSON.stringify(credentials),
     })
     setUser(data.user)
-    return data.user
   }
 
   async function logout() {

@@ -10,11 +10,17 @@ async function apiRequest(path, options = {}) {
     headers['Content-Type'] = 'application/json'
   }
 
-  const response = await fetch(`${apiUrl}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers,
-  })
+  let response
+
+  try {
+    response = await fetch(`${apiUrl}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers,
+    })
+  } catch {
+    throw new Error('Povezava s strežnikom ni uspela')
+  }
 
   const data = await response.json().catch(() => ({}))
 
