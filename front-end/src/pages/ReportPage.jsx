@@ -3,6 +3,11 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import apiRequest from '../api'
 import ReportContent from '../components/ReportContent'
 
+const backLabels = {
+  '/admin/reports': 'Nazaj na upravljanje',
+  '/my-reports': 'Nazaj na moja poročila',
+}
+
 function ReportPage() {
   const { id } = useParams()
   const location = useLocation()
@@ -10,8 +15,7 @@ function ReportPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const backTo = location.state?.from || '/archive'
-  const backLabel =
-    backTo === '/my-reports' ? 'Nazaj na moja poročila' : 'Nazaj v arhiv'
+  const backLabel = backLabels[backTo] || 'Nazaj v arhiv'
 
   useEffect(() => {
     let active = true

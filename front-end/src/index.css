@@ -235,6 +235,10 @@ button:disabled {
   margin: 1.5rem 0;
 }
 
+.admin-controls {
+  margin: 1.5rem 0;
+}
+
 .search-field {
   display: grid;
   flex: 1;
@@ -371,6 +375,18 @@ button:disabled {
 
 .report-table a:hover {
   text-decoration: underline;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.table-actions .secondary-link,
+.table-actions button {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.9rem;
 }
 
 .back-link {
@@ -806,6 +822,11 @@ button:disabled {
     color: var(--color-muted);
     content: attr(data-label);
     font-weight: 600;
+  }
+
+  .table-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .wizard-steps {
