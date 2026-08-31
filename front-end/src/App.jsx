@@ -9,10 +9,12 @@ import GuestRoute from './components/GuestRoute'
 import ProtectedRoute from './components/ProtectedRoute'
 import ArchivePage from './pages/ArchivePage'
 import LoginPage from './pages/LoginPage'
+import LogoutPage from './pages/LogoutPage'
 import MyReportsPage from './pages/MyReportsPage'
 import PagePlaceholder from './pages/PagePlaceholder'
 import RegisterPage from './pages/RegisterPage'
 import ReportPage from './pages/ReportPage'
+import ReportWizardPage from './pages/ReportWizardPage'
 
 const router = createBrowserRouter([
   {
@@ -30,26 +32,11 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/archive" replace /> },
           { path: '/archive', element: <ArchivePage /> },
+          { path: '/logout', element: <LogoutPage /> },
           { path: '/my-reports', element: <MyReportsPage /> },
-          {
-            path: '/reports/new',
-            element: (
-              <PagePlaceholder
-                title="Novo poročilo"
-                description="Tukaj bo tristopenjski obrazec za pripravo poročila."
-              />
-            ),
-          },
+          { path: '/reports/new', element: <ReportWizardPage /> },
           { path: '/reports/:id', element: <ReportPage /> },
-          {
-            path: '/reports/:id/edit',
-            element: (
-              <PagePlaceholder
-                title="Urejanje poročila"
-                description="Obstoječi osnutek se bo tukaj odprl v drugem koraku."
-              />
-            ),
-          },
+          { path: '/reports/:id/edit', element: <ReportWizardPage /> },
           {
             element: <AdminRoute />,
             children: [

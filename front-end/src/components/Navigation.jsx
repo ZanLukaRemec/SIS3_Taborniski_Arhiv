@@ -1,27 +1,11 @@
-import { useContext, useState } from 'react'
+import { useContext } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import AuthContext from '../context/auth'
 
 function Navigation() {
-  const { user, logout } = useContext(AuthContext)
-  const [error, setError] = useState('')
-  const [loggingOut, setLoggingOut] = useState(false)
+  const { user } = useContext(AuthContext)
   const navigate = useNavigate()
   const isAdmin = user.vloge?.includes('administrator')
-
-  async function handleLogout() {
-    setError('')
-    setLoggingOut(true)
-
-    try {
-      await logout()
-      navigate('/login')
-    } catch (logoutError) {
-      setError(logoutError.message)
-    } finally {
-      setLoggingOut(false)
-    }
-  }
 
   return (
     <header className="site-header">
@@ -47,13 +31,11 @@ function Navigation() {
           <button
             className="logout-button"
             type="button"
-            onClick={handleLogout}
-            disabled={loggingOut}
+            onClick={() => navigate('/logout')}
           >
-            {loggingOut ? 'Odjavljam …' : 'Odjava'}
+            Odjava
           </button>
         </div>
-        {error && <p className="inline-error">{error}</p>}
       </div>
     </header>
   )
